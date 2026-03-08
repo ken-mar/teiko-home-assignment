@@ -11,8 +11,24 @@ POPULATIONS = ["b_cell", "cd8_t_cell", "cd4_t_cell", "nk_cell", "monocyte"]
 
 
 def get_summary_table(conn: sqlite3.Connection) -> pd.DataFrame:
-    pass
-
+    query = """
+        WITH totals AS (
+            SELECT sample_id, SUM(count) as total_count
+            FROM sample_counts
+            GROUP BY sample_id
+        )
+        SELECT
+            s.sample_id     as sample,
+            t.total_count   as total_count,
+            p.name          as population,
+            sc.count        as count,
+            ROUND(100.0 * sc.count / t.total_count, 2)  as percentage
+        FROM samples s
+        JOIN totals t          ON s.sample_id = t.sample_id
+        JOIN sample_counts sc  ON s.sample_id = sc.sample_id
+        JOIN populations p     ON sc.population_id = p.population_id
+    """
+    return pd.read_sql_query(query, conn)
 
 def get_melanoma_miraclib_pbmc(conn: sqlite3.Connection) -> pd.DataFrame:
     pass
@@ -36,14 +52,15 @@ def main():
         summary_df = get_summary_table(conn)
         summary_df.to_csv(f"{OUTPUTS_DIR}/summary_table.csv", index=False)
 
-        analysis_df = get_melanoma_miraclib_pbmc(conn)
-        stats_df = run_statistics(analysis_df)
-        stats_df.to_csv(f"{OUTPUTS_DIR}/stats_results.csv", index=False)
-        make_boxplot(analysis_df)
+        # TODO: uncomment after each stub is complete
+        # analysis_df = get_melanoma_miraclib_pbmc(conn)
+        # stats_df = run_statistics(analysis_df)
+        # stats_df.to_csv(f"{OUTPUTS_DIR}/stats_results.csv", index=False)
+        # make_boxplot(analysis_df)
 
-        answers = run_subset_queries(conn)
-        with open(f"{OUTPUTS_DIR}/subset_answers.json", "w") as f:
-            json.dump(answers, f, indent=2)
+        # answers = run_subset_queries(conn)
+        # with open(f"{OUTPUTS_DIR}/subset_answers.json", "w") as f:
+        #     json.dump(answers, f, indent=2)
 
         print("Pipeline complete.")
     finally:
