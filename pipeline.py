@@ -55,9 +55,31 @@ def get_melanoma_miraclib_pbmc(conn: sqlite3.Connection) -> pd.DataFrame:
     """
     return pd.read_sql_query(query, conn)
 
-
 def run_statistics(df: pd.DataFrame) -> pd.DataFrame:
-    pass
+    results = []
+    for p in POPULATIONS:
+        p_df = df[df['population'] == p]
+        responders = p_df[p_df['response'] == 'yes']['percentage']
+        non_responders = p_df[p_df['response'] == 'no']['percentage']
+
+        stat, p_value = mannwhitneyu(responders, non_responders, alternative='two-sided')
+
+        results.append({
+            'population': p,
+            'n_resp': len(responders),
+            'n_non': len(non_responders),
+            'median_resp': round(responders.median(), 2),
+            'median_non': round(non_responders.median(), 2),
+            'p_value': round(p_value, 4)
+        })
+
+    stats_df = pd.DataFrame(results)
+
+    _, p_adj, _, _ = multipletests(stats_df['p_value'], method='fdr_bh')
+    stats_df['p_adj'] = p_adj.round(4)
+    stats_df['significant'] = stats_df['p_adj'] < 0.05
+
+    return stats_df
 
 
 def make_boxplot(df: pd.DataFrame) -> None:
@@ -76,8 +98,8 @@ def main():
 
         # TODO: uncomment after each stub is complete
         analysis_df = get_melanoma_miraclib_pbmc(conn)
-        # stats_df = run_statistics(analysis_df)
-        # stats_df.to_csv(f"{OUTPUTS_DIR}/stats_results.csv", index=False)
+        stats_df = run_statistics(analysis_df)
+        stats_df.to_csv(f"{OUTPUTS_DIR}/stats_results.csv", index=False)
         # make_boxplot(analysis_df)
 
         # answers = run_subset_queries(conn)
