@@ -43,7 +43,6 @@ Cell counts are stored in long format rather than wide format. This makes aggreg
 
 ## Notes
 - quintazide is flagged as a future treatment of interest for exploratory modeling
-- No life sciences background required to run or extend this project
 
 ## Dashboard
-<!-- TODO -->
+Run `make dashboard` and open the forwarded port 8501 in your browser.

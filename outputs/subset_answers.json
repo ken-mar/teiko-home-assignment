@@ -1,0 +1,15 @@
+{
+  "samples_per_project": {
+    "prj1": 384,
+    "prj3": 272
+  },
+  "subjects_by_response": {
+    "no": 325,
+    "yes": 331
+  },
+  "subjects_by_sex": {
+    "F": 312,
+    "M": 344
+  },
+  "avg_b_cell_melanoma_male_responders": 10401.28
+}

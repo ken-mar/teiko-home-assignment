@@ -7,25 +7,19 @@ OUTPUTS_DIR = "outputs"
 st.set_page_config(page_title="Teiko Immune Profiling", layout="wide")
 st.title("Teiko — Immune Cell Profiling Dashboard")
 
-
-@st.cache_data
-def load_summary() -> pd.DataFrame:
-    return pd.read_csv(f"{OUTPUTS_DIR}/summary_table.csv")
-
-
-@st.cache_data
-def load_stats() -> pd.DataFrame:
-    return pd.read_csv(f"{OUTPUTS_DIR}/stats_results.csv")
-
-
-@st.cache_data
-def load_subset_answers() -> dict:
-    with open(f"{OUTPUTS_DIR}/subset_answers.json") as f:
-        return json.load(f)
-
-
+# Part 2
 st.header("Part 2 — Cell Population Frequencies")
+summary_df = pd.read_csv(f"{OUTPUTS_DIR}/summary_table.csv")
+st.dataframe(summary_df)
 
+# Part 3
 st.header("Part 3 — Responder vs Non-Responder")
+st.image(f"{OUTPUTS_DIR}/boxplot.png", use_column_width=True)
+stats_df = pd.read_csv(f"{OUTPUTS_DIR}/stats_results.csv")
+st.dataframe(stats_df)
 
+# Part 4
 st.header("Part 4 — Baseline Subset Analysis")
+with open(f"{OUTPUTS_DIR}/subset_answers.json") as f:
+    answers = json.load(f)
+st.json(answers)
