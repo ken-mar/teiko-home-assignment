@@ -81,7 +81,6 @@ def run_statistics(df: pd.DataFrame) -> pd.DataFrame:
 
     return stats_df
 
-
 def make_boxplot(df: pd.DataFrame) -> None:
     fig, axes = plt.subplots(1, len(POPULATIONS), figsize=(18, 5))
     fig.suptitle("Cell Population Frequencies: Responders vs Non-Responders\n(Melanoma, Miraclib, PBMC)")
@@ -100,8 +99,69 @@ def make_boxplot(df: pd.DataFrame) -> None:
     plt.close()
 
 def run_subset_queries(conn: sqlite3.Connection) -> dict:
-    pass
+    cursor = conn.cursor()
 
+    cursor.execute("""
+        SELECT pr.name, COUNT(s.sample_id) as sample_count
+        FROM samples s
+        JOIN subjects sb  ON s.subject_id = sb.subject_id
+        JOIN projects pr  ON sb.project_id = pr.project_id
+        WHERE sb.condition = 'melanoma'
+        AND s.sample_type = 'PBMC'
+        AND s.time_from_treatment_start = 0
+        AND sb.treatment = 'miraclib'
+        GROUP BY pr.name
+    """)
+    samples_per_project = {row[0]: row[1] for row in cursor.fetchall()}
+
+    cursor.execute("""
+        SELECT sb.response, COUNT(DISTINCT sb.subject_id) as subject_count
+        FROM samples s
+        JOIN subjects sb  ON s.subject_id = sb.subject_id
+        JOIN projects pr  ON sb.project_id = pr.project_id
+        WHERE sb.condition = 'melanoma'
+        AND s.sample_type = 'PBMC'
+        AND s.time_from_treatment_start = 0
+        AND sb.treatment = 'miraclib'
+        GROUP BY sb.response
+    """)
+    responders_to_nonresponders = {row[0]: row[1] for row in cursor.fetchall()}
+
+    cursor.execute("""
+        SELECT sb.sex, COUNT(DISTINCT sb.subject_id) as subject_count
+        FROM samples s
+        JOIN subjects sb  ON s.subject_id = sb.subject_id
+        JOIN projects pr  ON sb.project_id = pr.project_id
+        WHERE sb.condition = 'melanoma'
+        AND s.sample_type = 'PBMC'
+        AND s.time_from_treatment_start = 0
+        AND sb.treatment = 'miraclib'
+        GROUP BY sb.sex
+    """)
+    male_to_female = {row[0]: row[1] for row in cursor.fetchall()}
+
+    cursor.execute("""
+        SELECT ROUND(AVG(sc.count), 2)
+        FROM samples s
+        JOIN subjects sb      ON s.subject_id = sb.subject_id
+        JOIN sample_counts sc ON s.sample_id = sc.sample_id
+        JOIN populations p    ON sc.population_id = p.population_id
+        WHERE sb.condition = 'melanoma'
+        AND s.sample_type = 'PBMC'
+        AND s.time_from_treatment_start = 0
+        AND sb.treatment = 'miraclib'
+        AND sb.sex = 'M'
+        AND sb.response = 'yes'
+        AND p.name = ?
+    """, ('b_cell',))
+    avg_b_cell = cursor.fetchone()[0]
+
+    return {
+        'samples_per_project': samples_per_project,
+        'subjects_by_response': responders_to_nonresponders,
+        'subjects_by_sex': male_to_female,
+        'avg_b_cell_melanoma_male_responders': avg_b_cell
+    }
 
 def main():
     conn = sqlite3.connect(DB_PATH)
@@ -109,15 +169,14 @@ def main():
         summary_df = get_summary_table(conn)
         summary_df.to_csv(f"{OUTPUTS_DIR}/summary_table.csv", index=False)
 
-        # TODO: uncomment after each stub is complete
         analysis_df = get_melanoma_miraclib_pbmc(conn)
         stats_df = run_statistics(analysis_df)
         stats_df.to_csv(f"{OUTPUTS_DIR}/stats_results.csv", index=False)
         make_boxplot(analysis_df)
 
-        # answers = run_subset_queries(conn)
-        # with open(f"{OUTPUTS_DIR}/subset_answers.json", "w") as f:
-        #     json.dump(answers, f, indent=2)
+        answers = run_subset_queries(conn)
+        with open(f"{OUTPUTS_DIR}/subset_answers.json", "w") as f:
+            json.dump(answers, f, indent=2)
 
         print("Pipeline complete.")
     finally:
