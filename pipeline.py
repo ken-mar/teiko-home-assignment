@@ -83,8 +83,21 @@ def run_statistics(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def make_boxplot(df: pd.DataFrame) -> None:
-    pass
+    fig, axes = plt.subplots(1, len(POPULATIONS), figsize=(18, 5))
+    fig.suptitle("Cell Population Frequencies: Responders vs Non-Responders\n(Melanoma, Miraclib, PBMC)")
 
+    for i, p in enumerate(POPULATIONS):
+        ax = axes[i]
+        p_df = df[df['population'] == p]
+        responders = p_df[p_df['response'] == 'yes']['percentage']
+        non_responders = p_df[p_df['response'] == 'no']['percentage']
+        ax.boxplot([responders, non_responders], labels=['Responders', 'Non-Responders'])
+        ax.set_title(p)
+        ax.set_ylabel("Relative Frequency (%)")
+
+    plt.tight_layout()
+    plt.savefig(f"{OUTPUTS_DIR}/boxplot.png", dpi=150)
+    plt.close()
 
 def run_subset_queries(conn: sqlite3.Connection) -> dict:
     pass
@@ -100,7 +113,7 @@ def main():
         analysis_df = get_melanoma_miraclib_pbmc(conn)
         stats_df = run_statistics(analysis_df)
         stats_df.to_csv(f"{OUTPUTS_DIR}/stats_results.csv", index=False)
-        # make_boxplot(analysis_df)
+        make_boxplot(analysis_df)
 
         # answers = run_subset_queries(conn)
         # with open(f"{OUTPUTS_DIR}/subset_answers.json", "w") as f:
