@@ -31,7 +31,29 @@ def get_summary_table(conn: sqlite3.Connection) -> pd.DataFrame:
     return pd.read_sql_query(query, conn)
 
 def get_melanoma_miraclib_pbmc(conn: sqlite3.Connection) -> pd.DataFrame:
-    pass
+    query = """
+        WITH totals AS (
+            SELECT sample_id, SUM(count) as total_count
+            FROM sample_counts
+            GROUP BY sample_id
+        )
+        SELECT
+            sb.subject_id   as subject_id,
+            s.sample_id     as sample,
+            p.name          as population,
+            ROUND(100.0 * sc.count / t.total_count, 2)  as percentage,
+            sb.response     as response
+        FROM samples s
+        JOIN subjects sb       ON s.subject_id = sb.subject_id
+        JOIN totals t          ON s.sample_id = t.sample_id
+        JOIN sample_counts sc  ON s.sample_id = sc.sample_id
+        JOIN populations p     ON sc.population_id = p.population_id
+        WHERE sb.condition = 'melanoma'
+          AND sb.treatment = 'miraclib'
+          AND s.sample_type = 'PBMC'
+          AND sb.response IS NOT NULL
+    """
+    return pd.read_sql_query(query, conn)
 
 
 def run_statistics(df: pd.DataFrame) -> pd.DataFrame:
@@ -53,7 +75,7 @@ def main():
         summary_df.to_csv(f"{OUTPUTS_DIR}/summary_table.csv", index=False)
 
         # TODO: uncomment after each stub is complete
-        # analysis_df = get_melanoma_miraclib_pbmc(conn)
+        analysis_df = get_melanoma_miraclib_pbmc(conn)
         # stats_df = run_statistics(analysis_df)
         # stats_df.to_csv(f"{OUTPUTS_DIR}/stats_results.csv", index=False)
         # make_boxplot(analysis_df)
